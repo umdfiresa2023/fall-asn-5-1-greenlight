@@ -67,7 +67,7 @@ Instructions: Fit a regression model with the lm(y\~x, data) function to predict
 Answer: The slope of the best fitting line is 12.962, and the intercept is 5.168.
 
 ```{r}
-output_model<-lm(Full_data$avg_pm25 ~ Full_data$ndvi, data = evals)
+output_model<-lm(avg_pm25 ~ ndvi, data = Full_data)
 output_model
 ```
 
@@ -75,11 +75,11 @@ output_model
 
 Instructions: For an example of this, you can review asn-6-4-key.qmd Part 1.
 
-$Y_{it}$ represent the outcome variable \_\_\_\_ for each \_\_\_\_ (geographical unit) $i$, and \_\_\_\_\_ (time unit) $t$.
+$Y_{it}$ represent the outcome variable PM2.5 air pollution for each NDVI measurement (geographical unit) $i$, and each date (every 8 days roughly) (time unit) $t$.
 
-Based on the regression from Question 6, $\beta_0$ is equal to \_\_\_\_\_.
+Based on the regression from Question 6, $\beta_0$ is equal to 5.168.
 
-Based on the regression from Question 6, $\beta_1$ is equal to \_\_\_\_\_.
+Based on the regression from Question 6, $\beta_1$ is equal to 12.962.
 
 ### **Part 3. Running Multiple Regressions**
 
@@ -88,7 +88,9 @@ Based on the regression from Question 6, $\beta_1$ is equal to \_\_\_\_\_.
 Instructions: You can review how to do this in this [DataCamp](https://campus.datacamp.com/courses/modeling-with-data-in-the-tidyverse/modeling-with-multiple-regression?ex=4) video. Please use the get_regression_table( ) function to print the output.
 
 ```{r}
+Full_data_regression<-lm(avg_pm25 ~ ndvi + month + year, data = Full_data)
 
+get_regression_table(Full_data_regression)
 ```
 
 **Question 9: What is the sum of squared residuals of the model that you ran in Question 8? (1 point)**
@@ -96,7 +98,9 @@ Instructions: You can review how to do this in this [DataCamp](https://campus.da
 Instructions: You can review how to do this in this [DataCamp](https://campus.datacamp.com/courses/modeling-with-data-in-the-tidyverse/modeling-with-multiple-regression?ex=4) video.
 
 ```{r}
-
+get_regression_points(Full_data_regression) %>%
+  mutate(sq_residuals = residual^2) %>%
+  summarize(sum_sq_residuals = sum(sq_residuals))
 ```
 
 **Question 10: Run a multiple regression model that uses all possible numerical, binary, and categorical variables to predict the outcome variable. What does the regression table look like? (2 points)**
@@ -113,6 +117,8 @@ The summary(ModelName) function is then used to print out the regression model. 
 #| message: false
 #install.packages("lfe")
 library("lfe")
+All_vars_regression<-felm(avg_pm25 ~ ndvi + month + year + lr_open, Full_data)
+summary(All_vars_regression)
 ```
 
 Write your model below and run it.
@@ -126,6 +132,12 @@ Write your model below and run it.
 Instructions: Because the function get_regression_points( ) does not work with the function felm( ), you have to replace get_regression_points(ModelName) with ModelName\$residuals. The rest of the code is the same as this [DataCamp](https://campus.datacamp.com/courses/modeling-with-data-in-the-tidyverse/modeling-with-multiple-regression?ex=4) video.
 
 ```{r}
+res<-data.frame(All_vars_regression$residuals)
+names(res)<-"residual"
+
+res2<-res %>%
+  mutate(sq_residuals = residual^2) %>%
+  summarize(sum_sq_residuals = sum(sq_residuals))
 
 ```
 
@@ -133,33 +145,43 @@ Instructions: Because the function get_regression_points( ) does not work with t
 
 Instructions: You can modify the equation shown below. Afterwards, indicate the value of each $\beta$ . To see an example of how categorical variables are written in an equation, see asn-6-4-key.qmd Part 1 Question 4, 5, and 6.
 
-Answer: $Y_{it} = \beta_0 + \beta_1 X_{it} + \epsilon_{it}$
+Answer: Beta 0 = 712.6163, Beta 1 = 12.84554, Beta 2 = -0.06961, Beta 3 = -0.35174, Beta 4 = -1.61117, where X represents the NDVI index, X2 represents the month, X3 represents the year, and X4 represents whether or not the lightrail was open. $Y_{it} = \beta_0 + \beta_1 X_{it} + \beta_2 X2_{it} + \beta_3 X3_{it} + \beta_4 X4_{it} + \epsilon_{it}$
 
 **Question 13: Create more binary or categorical variables by multiplying binary variables or combining categorical variables together as you see fit to better predict the outcome variable. Explain what real-world factor each new variable represents. (2 points)**
 
 Instructions: You created new variables by multiplying binary variables and combining categorical variables in asn-6-4-key.qmd Part 2. You explained what each variable represents in asn-6-4-key.qmd Part 1 Question 4, 5, and 6.
 
 ```{r}
+Full_data_2 <- Full_data %>%
+  mutate(date=paste0(as.character(year), "-", as.character(month), "-01")) %>%
+  mutate(date=as.Date(date)) %>%
+  mutate(NDVI_lr_open = lr_open*ndvi)
 
 ```
 
-Answer:
+Answer: This combines the NDVI Index and light rail open variables in order to better understand the relationship between the light rail opening and the NDVI index. This also combines the month and year into a date variable to better represent a linear timeline.
 
 **Question 14: Run a multiple regression model that uses all possible numerical, binary, and categorical variables to predict the outcome variable. What does the regression table look like? (2 points)**
 
 ```{r}
-
+All_vars_regression<-felm(avg_pm25 ~ ndvi + NDVI_lr_open + date, Full_data_2)
+summary(All_vars_regression)
 ```
 
 **Question 15: What is the sum of squared residuals from the model in Question 13? (2 points)**
 
 ```{r}
+res<-data.frame(All_vars_regression$residuals)
+names(res)<-"residual"
 
+res2<-res %>%
+  mutate(sq_residuals = residual^2) %>%
+  summarize(sum_sq_residuals = sum(sq_residuals))
 ```
 
 **Question 16: Based on the sum of squared residuals, which model in this assignment best predicts the outcome? (1 point)**
 
-Answer:
+Answer: The final regression model from question 13 had the lowest sum of squared residuals at 1027 compared to the previous 2.
 
 ### **Part 4. Thinking about causal inference**
 
@@ -167,6 +189,6 @@ Note: Every team except Team Electric Grid and The Whistle Blowers has to comple
 
 **Question 17: In your opinion, what are some real-world factors that impact both the treatment and control variables that we have not taken into account? (2 points)**
 
-Answer:
+Answer: Any type of legislation or policies implemented since 2000 that could have an impact on air pollution could impact both the treatment and control variables and has not been taken into account.
 
 You have reached the end of this assignment. Commit and push your updates back into the GitHub repository. You can find the step-by-step tutorial [here.](https://drive.google.com/drive/u/0/folders/1eSMfNoV_ilp4OnID2Ql3YT2qXkhCS7Vm)
